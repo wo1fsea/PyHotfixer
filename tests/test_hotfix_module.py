@@ -14,5 +14,5 @@ import unittest
 
 class HotfixModuleTestCase(unittest.TestCase):
 
-	def test_hotfix_module(self):
+	def test_hotfix_module(self, c=1):
         pass
