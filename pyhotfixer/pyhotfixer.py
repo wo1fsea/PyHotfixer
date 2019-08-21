@@ -18,8 +18,22 @@ import importlib
 import importlib.abc
 import importlib.util
 from importlib.machinery import FileFinder
+from weakref import WeakSet
 
 OLD_MODULES = {}
+BUILTINS_OBJ = object
+NEW_OBJECTS = WeakSet()
+
+
+class hotfix_object(object):
+
+    def __new__(cls):
+        obj = BUILTINS_OBJ.__new__(cls)
+
+        if cls .__module__ in OLD_MODULES:
+            NEW_OBJECTS.add(obj)
+
+        return obj
 
 
 class MetaPathLoader(importlib.abc.SourceLoader):
@@ -48,6 +62,7 @@ class MetaPathLoader(importlib.abc.SourceLoader):
 
 def hotfix(module_names=None):
     global OLD_MODULES
+    global BUILTINS_OBJ
 
     if module_names is None:
         module_names = list(sys.modules.keys())
@@ -59,6 +74,8 @@ def hotfix(module_names=None):
 
     gc.disable()
     OLD_MODULES = sys.modules.copy()
+    BUILTINS_OBJ = object
+    sys.modules["builtins"].object = hotfix_object
 
     sys.path_hooks.insert(0, FileFinder.path_hook((MetaPathLoader, [".py"])))
     # clear any loaders that might already be in use by the FileFinder
@@ -70,8 +87,15 @@ def hotfix(module_names=None):
             sys.modules.pop(name)
             importlib.import_module(name)
         except Exception as ex:
+            print(ex)
             if name in OLD_MODULES:
                 sys.modules[name] = OLD_MODULES[name]
+
+    sys.modules["builtins"].object = BUILTINS_OBJ
+    BUILTINS_OBJ = None
+
+    for obj in NEW_OBJECTS:
+        hotfixed_obj(obj)
 
     gc.enable()
     gc.collect()
@@ -125,13 +149,7 @@ def hotfix_function(old_function, new_function):
     setattr(old_function, '__code__', new_function.__code__)
     setattr(old_function, '__doc__', new_function.__doc__)
     setattr(old_function, '__dict__', new_function.__dict__)
-
-    if new_function.__defaults__:
-        new_defaults = tuple([hotfixed_obj(obj) for obj in new_function.__defaults__])
-    else:
-        new_defaults = ()
-
-    setattr(old_function, '__defaults__', new_defaults)
+    setattr(old_function, '__defaults__', new_function.__defaults__)
 
     if old_cell_num:
         for index, old_cell in enumerate(old_function.__closure__):
@@ -178,7 +196,7 @@ def hotfix_class(old_class, new_class):
     hotfix_skip_list = get_hotfix_skip_list(new_class)
 
     for name, old_attr in dict(old_class.__dict__).items():
-        if name not in new_class.__dict__:
+        if name not in hotfix_skip_list and name not in new_class.__dict__:
             delattr(old_class, name)
 
     for name, new_attr in dict(new_class.__dict__).items():
@@ -232,7 +250,7 @@ def get_hotfix_data_list(obj):
 
 def get_hotfix_skip_list(obj):
     skip_list = getattr(obj, "__hotfix_skip_list__", [])
-    skip_list.extend(['__module__', '__dict__', '__weakref__', '__dir__'])
+    skip_list.extend(['__module__', '__dict__', '__weakref__', '__dict__', '__dir__'])
     return skip_list
 
 
