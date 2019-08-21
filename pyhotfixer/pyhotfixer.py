@@ -20,7 +20,6 @@ import importlib.util
 from importlib.machinery import FileFinder
 
 OLD_MODULES = {}
-OLD_SYS_META_PATH = []
 
 
 class MetaPathLoader(importlib.abc.SourceLoader):
@@ -32,8 +31,6 @@ class MetaPathLoader(importlib.abc.SourceLoader):
         return self.path
 
     def get_data(self, filename):
-        """exec_module is already defined for us, we just have to provide a way
-        of getting the source code of the module"""
         with open(filename) as f:
             data = f.read()
         # do something with data ...
@@ -51,30 +48,33 @@ class MetaPathLoader(importlib.abc.SourceLoader):
 
 def hotfix(module_names=None):
     global OLD_MODULES
-    global OLD_SYS_META_PATH
 
     if module_names is None:
         module_names = list(sys.modules.keys())
 
-    # gc.disable()
+    OLD_MODULES.clear()
+    for name in module_names:
+        if name in sys.modules:
+            OLD_MODULES[name] = sys.modules[name]
 
+    gc.disable()
     OLD_MODULES = sys.modules.copy()
+
     sys.path_hooks.insert(0, FileFinder.path_hook((MetaPathLoader, [".py"])))
     # clear any loaders that might already be in use by the FileFinder
     sys.path_importer_cache.clear()
     importlib.invalidate_caches()
 
-    # for name in module_names:
-    #     sys.modules.pop(name)
-
     for name in module_names:
-        importlib.reload(sys.modules.get(name))
-        sys.modules.pop(name)
+        try:
+            sys.modules.pop(name)
+            importlib.import_module(name)
+        except Exception as ex:
+            if name in OLD_MODULES:
+                sys.modules[name] = OLD_MODULES[name]
 
-    # gc.enable()
-    # gc.collect()
-
-    sys.meta_path = OLD_SYS_META_PATH
+    gc.enable()
+    gc.collect()
 
 
 def hotfix_module(old_module, new_module):
@@ -143,8 +143,6 @@ def hotfix_function(old_function, new_function):
 
 
 def hotfixed_obj(obj):
-    return obj
-
     new_class = getattr(obj, "__class__", None)
 
     if not new_class:
@@ -154,29 +152,18 @@ def hotfixed_obj(obj):
     if not (getattr(new_class, "__flags__", 0) & 0x200):
         return obj
 
-    old_infos = _module_infos.get(new_class.__module__)
-    if not old_infos:
+    module_name = new_class.__module__
+
+    module = OLD_MODULES.get(module_name)
+    if not module:
         return obj
 
-    old_class = old_infos.get(new_class.__name__)
+    class_name = new_class.__name__
+    old_class = getattr(module, class_name)
     if old_class:
         obj.__class__ = old_class
 
     return obj
-
-
-def is_skip_hotfix(obj):
-    return getattr(obj, "__skip_hotfix__", False)
-
-
-def get_hotfix_data_list(obj):
-    return getattr(obj, "__hotfix_data_list__", [])
-
-
-def get_hotfix_skip_list(obj):
-    skip_list = getattr(obj, "__hotfix_skip_list__", [])
-    skip_list.extend(['__module__', '__dict__', '__weakref__'])
-    return skip_list
 
 
 def hotfix_class(old_class, new_class):
@@ -233,3 +220,21 @@ def hotfix_class(old_class, new_class):
 # 	pass
 # elif inspect.isgetsetdescriptor(new_attr):
 # 	pass
+
+
+def is_skip_hotfix(obj):
+    return getattr(obj, "__skip_hotfix__", False)
+
+
+def get_hotfix_data_list(obj):
+    return getattr(obj, "__hotfix_data_list__", [])
+
+
+def get_hotfix_skip_list(obj):
+    skip_list = getattr(obj, "__hotfix_skip_list__", [])
+    skip_list.extend(['__module__', '__dict__', '__weakref__', '__dir__'])
+    return skip_list
+
+
+def skip_hotfix(obj):
+    return obj
