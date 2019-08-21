@@ -1,2 +1,2 @@
 # PyHotfixer
-hotfix lib for Python
+The hotfix package for Python
