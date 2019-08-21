@@ -44,6 +44,7 @@ class A(object):
 
     def method(self, a, b, c=arg()):
         print(isinstance(c, arg))
+        print("id", id(c.__class__))
         return c.a
 
 
