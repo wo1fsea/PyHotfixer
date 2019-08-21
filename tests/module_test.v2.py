@@ -1,30 +1,26 @@
+from pyhotfixer.pyhotfixer import skip_hotfix
+
 __skip_hotfix__ = False
 __hotfix_data_list__ = [
 
 ]
-__hotfix_skip_list__ = [
 
-]
-
-
-def skip_hotfix(cls):
-    return cls
 
 
 class HotfixClass(object):
-    hotfix_class_data = 1
-    no_hotfix_class_data = 1
+    hotfix_class_data = 2
+    no_hotfix_class_data = 2
 
     def hotfix_method(self):
-        return 1
+        return 2
 
     @skip_hotfix
     def no_hotfix_method(self):
-        return 1
+        return 2
 
     @property
     def hotfix_property(self):
-        return
+        return 2
 
     @hotfix_property.setter
     def hotfix_property(self, value):
@@ -34,17 +30,15 @@ class HotfixClass(object):
     def hotfix_property(self):
         pass
 
-    @skip_hotfix
     @property
-    def not_hotfix_property(self):
-        return
-
     @skip_hotfix
+    def not_hotfix_property(self):
+        return 2
+
     @not_hotfix_property.setter
     def not_hotfix_property(self, value):
         pass
 
-    @skip_hotfix
     @not_hotfix_property.deleter
     def not_hotfix_property(self):
         pass
@@ -56,7 +50,7 @@ class HotfixClass(object):
 
 @skip_hotfix
 class NoHotfixClass(object):
-    no_hotfix_class_data = 1
+    no_hotfix_class_data = 2
 
     def no_hotfix_method(self):
-        return 1
+        return 2

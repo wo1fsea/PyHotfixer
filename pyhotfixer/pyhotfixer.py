@@ -255,4 +255,17 @@ def get_hotfix_skip_list(obj):
 
 
 def skip_hotfix(obj):
+    if inspect.isfunction(obj) :
+        frame = inspect.currentframe()
+        method_name = obj.__code__.co_name
+        hotfix_skip_list = frame.f_back.f_locals.setdefault("__hotfix_skip_list__", [])
+        hotfix_skip_list.append(method_name)
+    elif inspect.isclass(obj):
+        frame = inspect.currentframe()
+        hotfix_skip_list = frame.f_back.f_locals.setdefault("__hotfix_skip_list__", [])
+        hotfix_skip_list.append(obj.__name__)
+    else:
+        print("@skip_hotfix should only be used to dedicate functions or classes.")
+
     return obj
+

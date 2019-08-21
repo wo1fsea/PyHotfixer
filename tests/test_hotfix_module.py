@@ -10,9 +10,41 @@ Description:
 ----------------------------------------------------------------------------"""
 
 import unittest
+import os
+import sys
+import shutil
+
+from pyhotfixer.pyhotfixer import hotfix
+
+FILE_NAME = "module_test.py"
+FILE_NAME_V1 = "module_test.v1.py"
+FILE_NAME_V2 = "module_test.v2.py"
 
 
 class HotfixModuleTestCase(unittest.TestCase):
 
-	def test_hotfix_module(self, c=1):
-        pass
+    def setUp(self):
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        self.module_file = os.path.join(cur_dir, FILE_NAME)
+        self.module_file_v1 = os.path.join(cur_dir, FILE_NAME_V1)
+        self.module_file_v2 = os.path.join(cur_dir, FILE_NAME_V2)
+        if os.path.exists(self.module_file):
+            os.remove(self.module_file)
+
+    def tearDown(self):
+        if os.path.exists(self.module_file):
+            os.remove(self.module_file)
+
+    def test_hotfix_module(self):
+        shutil.copy(self.module_file_v1, self.module_file)
+
+        sys.modules.pop("module_test", None)
+        import module_test
+
+        hotfix_class = module_test.HotfixClass()
+        self.assertEqual(hotfix_class.hotfix_method(), 1)
+
+        shutil.copy(self.module_file_v2, self.module_file)
+        hotfix(["module_test"])
+
+        self.assertEqual(hotfix_class.hotfix_method(), 2)
