@@ -28,7 +28,22 @@ def func():
 def func_skip():
     return 1
 
+class arg(object):
+    __hotfix_data_list__ = ["a"]
+    a = 101111111
 
 class A(object):
-    def method(self, a, b):
-        return a - b
+    __skip_hotfix__ = False
+    __hotfix_skip_list__ = []
+    __hotfix_data_list__ = ["a"]
+    a = 2
+
+    def __init__(self):
+        a = 100000
+        self.method2 = lambda: a
+
+    def method(self, a, b, c=arg()):
+        print(isinstance(c, arg))
+        return c.a
+
+
