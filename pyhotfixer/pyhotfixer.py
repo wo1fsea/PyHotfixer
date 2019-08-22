@@ -15,28 +15,28 @@ import gc
 import sys
 import inspect
 import importlib
-import importlib.abc
-import importlib.util
+from importlib.abc import SourceLoader
 from importlib.machinery import FileFinder
 from weakref import WeakSet
 
+Py_TPFLAGS_HEAPTYPE = 0x200
 OLD_MODULES = {}
 BUILTINS_OBJ = object
 NEW_OBJECTS = WeakSet()
 
 
-class hotfix_object(object):
+class HotfixerObject(object):
 
     def __new__(cls):
         obj = BUILTINS_OBJ.__new__(cls)
 
-        if cls .__module__ in OLD_MODULES:
+        if cls.__module__ in OLD_MODULES:
             NEW_OBJECTS.add(obj)
 
         return obj
 
 
-class MetaPathLoader(importlib.abc.SourceLoader):
+class MetaPathLoader(SourceLoader):
     def __init__(self, fullname, path):
         self.fullname = fullname
         self.path = path
@@ -47,8 +47,6 @@ class MetaPathLoader(importlib.abc.SourceLoader):
     def get_data(self, filename):
         with open(filename) as f:
             data = f.read()
-        # do something with data ...
-        # eg. ignore it... return "print('hello world')"
         return data
 
     def exec_module(self, module):
@@ -60,12 +58,9 @@ class MetaPathLoader(importlib.abc.SourceLoader):
             hotfix_module(old_module, module)
 
 
-def hotfix(module_names=None):
+def hotfix(module_names):
     global OLD_MODULES
     global BUILTINS_OBJ
-
-    if module_names is None:
-        module_names = list(sys.modules.keys())
 
     OLD_MODULES.clear()
     for name in module_names:
@@ -75,7 +70,7 @@ def hotfix(module_names=None):
     gc.disable()
     OLD_MODULES = sys.modules.copy()
     BUILTINS_OBJ = object
-    sys.modules["builtins"].object = hotfix_object
+    sys.modules["builtins"].object = HotfixerObject
 
     sys.path_hooks.insert(0, FileFinder.path_hook((MetaPathLoader, [".py"])))
     # clear any loaders that might already be in use by the FileFinder
@@ -83,19 +78,19 @@ def hotfix(module_names=None):
     importlib.invalidate_caches()
 
     for name in module_names:
-        try:
+        # try:
             sys.modules.pop(name)
             importlib.import_module(name)
-        except Exception as ex:
-            print(ex)
-            if name in OLD_MODULES:
-                sys.modules[name] = OLD_MODULES[name]
+        # except Exception as ex:
+        #     print(ex)
+        #     if name in OLD_MODULES:
+        #         sys.modules[name] = OLD_MODULES[name]
 
     sys.modules["builtins"].object = BUILTINS_OBJ
     BUILTINS_OBJ = None
 
     for obj in NEW_OBJECTS:
-        hotfixed_obj(obj)
+        hotfix_obj(obj)
 
     gc.enable()
     gc.collect()
@@ -153,21 +148,20 @@ def hotfix_function(old_function, new_function):
 
     if old_cell_num:
         for index, old_cell in enumerate(old_function.__closure__):
-            new_cell = new_function.__closure__[index].cell_contents
+            new_cell = new_function.__closure__[index]
             if inspect.isfunction(old_cell.cell_contents) and inspect.isfunction(new_cell.cell_contents):
                 hotfix_function(old_cell.cell_contents, new_cell.cell_contents)
 
     return old_function
 
 
-def hotfixed_obj(obj):
+def hotfix_obj(obj):
     new_class = getattr(obj, "__class__", None)
 
     if not new_class:
         return obj
 
-    # Py_TPFLAGS_HEAPTYPE
-    if not (getattr(new_class, "__flags__", 0) & 0x200):
+    if not (getattr(new_class, "__flags__", 0) & Py_TPFLAGS_HEAPTYPE):
         return obj
 
     module_name = new_class.__module__
@@ -185,8 +179,7 @@ def hotfixed_obj(obj):
 
 
 def hotfix_class(old_class, new_class):
-    # Py_TPFLAGS_HEAPTYPE
-    if not (getattr(new_class, "__flags__", 0) & 0x200):
+    if not (getattr(new_class, "__flags__", 0) & Py_TPFLAGS_HEAPTYPE):
         return old_class
 
     if is_skip_hotfix(new_class):
@@ -207,6 +200,10 @@ def hotfix_class(old_class, new_class):
             setattr(old_class, name, new_attr)
             continue
 
+        if name not in old_class.__dict__:
+            setattr(old_class, name, new_attr)
+            continue
+
         old_attr = old_class.__dict__[name]
 
         if isinstance(new_attr, property):
@@ -214,7 +211,8 @@ def hotfix_class(old_class, new_class):
 
         elif isinstance(new_attr, staticmethod) or isinstance(new_attr, classmethod):
             if hasattr(old_attr, "__func__") and hasattr(new_attr, "__func__"):
-                old_attr.__func__ = hotfix_function(old_attr.__func__, new_attr.__func__)
+                if hotfix_function(old_attr.__func__, new_attr.__func__) is new_attr.__func__:
+                    setattr(old_class, name, new_attr)
             else:
                 setattr(old_class, name, new_attr)
 
@@ -229,15 +227,12 @@ def hotfix_class(old_class, new_class):
                 setattr(old_class, name, hotfix_class(old_attr, new_attr))
             else:
                 setattr(old_class, name, new_attr)
+        elif inspect.ismemberdescriptor(new_attr):
+            setattr(old_class, name, new_attr)
+        elif inspect.isgetsetdescriptor(new_attr):
+            setattr(old_class, name, new_attr)
 
     return old_class
-
-# elif inspect.ismemberdescriptor(old_attr):
-# 	pass
-# elif inspect.ismemberdescriptor(new_attr):
-# 	pass
-# elif inspect.isgetsetdescriptor(new_attr):
-# 	pass
 
 
 def is_skip_hotfix(obj):
@@ -255,7 +250,7 @@ def get_hotfix_skip_list(obj):
 
 
 def skip_hotfix(obj):
-    if inspect.isfunction(obj) :
+    if inspect.isfunction(obj):
         frame = inspect.currentframe()
         method_name = obj.__code__.co_name
         hotfix_skip_list = frame.f_back.f_locals.setdefault("__hotfix_skip_list__", [])
@@ -268,4 +263,3 @@ def skip_hotfix(obj):
         print("@skip_hotfix should only be used to dedicate functions or classes.")
 
     return obj
-
