@@ -10,6 +10,15 @@ HOTFIX_DATA = 1
 NO_HOTFIX_DATA = 1
 
 
+def hotfix_func():
+    return 1
+
+
+@skip_hotfix
+def no_hotfix_func():
+    return 1
+
+
 class ObjCreatedWhenHotfixing(object):
     data = 1
 
@@ -32,94 +41,3 @@ def hotfix_func_with_closure():
 
 
 func = hotfix_func_with_closure()
-
-
-def hotfix_func():
-    return 1
-
-
-@skip_hotfix
-def no_hotfix_func():
-    return 1
-
-
-class HotfixClass(object):
-    # data
-    __hotfix_data_list__ = [
-        "hotfix_class_data"
-    ]
-
-    hotfix_class_data = 1
-    no_hotfix_class_data = 1
-
-    # method
-    def hotfix_method(self):
-        return 1
-
-    @skip_hotfix
-    def no_hotfix_method(self):
-        return 1
-
-    # staticmethod
-    @staticmethod
-    def hotfix_staticmethod():
-        return 1
-
-    @staticmethod
-    @skip_hotfix
-    def no_hotfix_staticmethod():
-        return 1
-
-    # classmethod
-    @classmethod
-    def hotfix_classmethod(cls):
-        return 1
-
-    @staticmethod
-    @skip_hotfix
-    def no_hotfix_classmethod(cls):
-        return 1
-
-    # property
-    @property
-    def hotfix_property(self):
-        return 1
-
-    @hotfix_property.setter
-    def hotfix_property(self, value):
-        pass
-
-    @hotfix_property.deleter
-    def hotfix_property(self):
-        pass
-
-    @property
-    @skip_hotfix
-    def not_hotfix_property(self):
-        return 1
-
-    @not_hotfix_property.setter
-    def not_hotfix_property(self, value):
-        pass
-
-    @not_hotfix_property.deleter
-    def not_hotfix_property(self):
-        pass
-
-    # inner class
-    class HotfixInnerClass(object):
-        def hotfix_method(self):
-            return 1
-
-    @skip_hotfix
-    class NoHotfixInnerClass(object):
-        def hotfix_method(self):
-            return 1
-
-
-@skip_hotfix
-class NoHotfixClass(object):
-    no_hotfix_class_data = 1
-
-    def no_hotfix_method(self):
-        return 1

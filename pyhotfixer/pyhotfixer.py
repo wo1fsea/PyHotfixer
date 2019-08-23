@@ -15,6 +15,7 @@ import gc
 import sys
 import inspect
 import importlib
+import traceback
 from importlib.abc import SourceLoader
 from importlib.machinery import FileFinder
 from weakref import WeakSet
@@ -78,14 +79,19 @@ def hotfix(module_names):
     importlib.invalidate_caches()
 
     for name in module_names:
-        # try:
-            sys.modules.pop(name)
-            importlib.import_module(name)
-        # except Exception as ex:
-        #     print(ex)
-        #     if name in OLD_MODULES:
-        #         sys.modules[name] = OLD_MODULES[name]
-
+        try:
+            old_module = sys.modules.pop(name, None)
+            new_module = importlib.import_module(name)
+            if old_module and not is_skip_hotfix(new_module):
+                for name, new_attr in inspect.getmembers(new_module):
+                    setattr(old_module, name, new_attr)
+        except Exception as ex:
+            traceback.print_exc()
+        finally:
+            if name in OLD_MODULES:
+                sys.modules[name] = OLD_MODULES[name]
+                
+    sys.path_hooks.pop(0)
     sys.modules["builtins"].object = BUILTINS_OBJ
     BUILTINS_OBJ = None
 
@@ -130,6 +136,8 @@ def hotfix_module(old_module, new_module):
         elif inspect.isfunction(new_attr):
             if inspect.isfunction(old_attr):
                 setattr(new_module, name, hotfix_function(old_attr, new_attr))
+        else:
+            setattr(new_module, name, old_attr)
 
     return new_module
 
