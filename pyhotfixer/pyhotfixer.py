@@ -83,14 +83,14 @@ def hotfix(module_names):
             old_module = sys.modules.pop(name, None)
             new_module = importlib.import_module(name)
             if old_module and not is_skip_hotfix(new_module):
-                for name, new_attr in inspect.getmembers(new_module):
-                    setattr(old_module, name, new_attr)
+                for attr_name, new_attr in inspect.getmembers(new_module):
+                    setattr(old_module, attr_name, new_attr)
         except Exception as ex:
             traceback.print_exc()
         finally:
             if name in OLD_MODULES:
                 sys.modules[name] = OLD_MODULES[name]
-                
+
     sys.path_hooks.pop(0)
     sys.modules["builtins"].object = BUILTINS_OBJ
     BUILTINS_OBJ = None
