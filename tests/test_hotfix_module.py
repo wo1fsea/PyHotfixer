@@ -41,18 +41,18 @@ class HotfixModuleTestCase(unittest.TestCase):
         sys.modules.pop("module_test", None)
         import module_test
 
-        obj = module_test.OBJECT_CREATED_WHEN_HOTFIXING
-        obj_class = module_test.ObjCreatedWhenHotfixing
-        hotfix_class = module_test.HotfixClass()
-        self.assertEqual(hotfix_class.hotfix_method(), 1)
-        print(id(obj.__class__))
+        self.assertEqual(module_test.NO_HOTFIX_DATA, 1)
+        self.assertEqual(module_test.HOTFIX_DATA, 1)
+
+        self.assertEqual(module_test.no_hotfix_func(), 1)
+        self.assertEqual(module_test.hotfix_func(), 1)
 
         shutil.copy(self.module_file_v2, self.module_file)
         hotfix(["module_test"])
 
-        print(id(module_test.OBJECT_CREATED_WHEN_HOTFIXING.__class__), id(obj.__class__))
-        self.assertFalse(module_test.OBJECT_CREATED_WHEN_HOTFIXING is obj_class)
-        self.assertTrue(isinstance(module_test.OBJECT_CREATED_WHEN_HOTFIXING, obj_class))
+        self.assertEqual(module_test.NO_HOTFIX_DATA, 1)
+        self.assertEqual(module_test.HOTFIX_DATA, 2)
 
-        self.assertEqual(hotfix_class.hotfix_method(), 2)
+        self.assertEqual(module_test.no_hotfix_func(), 1)
+        self.assertEqual(module_test.hotfix_func(), 2)
 
