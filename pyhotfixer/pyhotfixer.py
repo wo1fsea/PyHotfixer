@@ -209,7 +209,17 @@ def hotfix_class(old_class, new_class):
             continue
 
         if name not in old_class.__dict__:
-            setattr(old_class, name, new_attr)
+            if (
+                    isinstance(new_attr, property) or
+                    isinstance(new_attr, staticmethod) or
+                    isinstance(new_attr, classmethod) or
+                    inspect.isfunction(new_attr) or
+                    inspect.isclass(new_attr) or
+                    inspect.isclass(old_attr) or
+                    inspect.ismemberdescriptor(new_attr) or
+                    inspect.isgetsetdescriptor(new_attr)
+            ):
+                setattr(old_class, name, new_attr)
             continue
 
         old_attr = old_class.__dict__[name]
@@ -218,9 +228,11 @@ def hotfix_class(old_class, new_class):
             setattr(old_class, name, new_attr)
 
         elif isinstance(new_attr, staticmethod) or isinstance(new_attr, classmethod):
-            if hasattr(old_attr, "__func__") and hasattr(new_attr, "__func__"):
-                if hotfix_function(old_attr.__func__, new_attr.__func__) is new_attr.__func__:
-                    setattr(old_class, name, new_attr)
+            if (
+                    hasattr(old_attr, "__func__") and hasattr(new_attr, "__func__") and
+                    hotfix_function(old_attr.__func__, new_attr.__func__) is old_attr.__func__
+            ):
+                pass
             else:
                 setattr(old_class, name, new_attr)
 
@@ -231,7 +243,7 @@ def hotfix_class(old_class, new_class):
                 setattr(old_class, name, new_attr)
 
         elif inspect.isclass(new_attr):
-            if new_attr.__name__ == old_attr.__name__:
+            if inspect.isclass(old_attr) and new_attr.__name__ == old_attr.__name__:
                 setattr(old_class, name, hotfix_class(old_attr, new_attr))
             else:
                 setattr(old_class, name, new_attr)

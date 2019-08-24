@@ -3,6 +3,7 @@ from pyhotfixer import skip_hotfix
 __skip_hotfix__ = False
 __hotfix_data_list__ = [
     "HOTFIX_DATA",
+    "NEW_HOTFIX_DATA",
     "OBJECT_CREATE_WHEN_HOTFIXING"
 ]
 
@@ -19,25 +20,22 @@ def no_hotfix_func():
     return 2
 
 
+@skip_hotfix
+def new_func_and_skip():
+    return 2
+
+
+def new_func():
+    return 2
+
+
+NEW_DATA = 2
+NEW_HOTFIX_DATA = 2
+
+
 class ObjCreatedWhenHotfixing(object):
-    data = 2
+    def func(self):
+        return 2
 
 
 OBJECT_CREATED_WHEN_HOTFIXING = ObjCreatedWhenHotfixing()
-
-
-def hotfix_func_with_obj_default(obj=ObjCreatedWhenHotfixing()):
-    return obj
-
-
-def hotfix_func_with_closure():
-    def cell_func():
-        return 2
-
-    def closure_func():
-        return cell_func()
-
-    return closure_func
-
-
-func = hotfix_func_with_closure()

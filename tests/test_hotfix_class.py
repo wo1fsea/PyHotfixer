@@ -35,7 +35,7 @@ class HotfixClassTestCase(unittest.TestCase):
         if os.path.exists(self.module_file):
             os.remove(self.module_file)
 
-    def test_hotfix_module(self):
+    def test_hotfix_class(self):
         shutil.copy(self.module_file_v1, self.module_file)
         sys.modules.pop("class_test", None)
 
@@ -54,6 +54,21 @@ class HotfixClassTestCase(unittest.TestCase):
         self.assertEqual(hotfix_class_obj.hotfix_property, 1)
         self.assertEqual(hotfix_class_obj.no_hotfix_property, 1)
 
+        self.assertEqual(hotfix_class_obj.replace_data_with_func, 1)
+        self.assertEqual(hotfix_class_obj.replace_data_with_static_method, 1)
+        self.assertEqual(hotfix_class_obj.replace_data_with_class_method, 1)
+
+        self.assertEqual(class_test.HotfixClass.InnerClass1.func(), 1)
+        self.assertEqual(class_test.HotfixClass.InnerClass2.func(), 1)
+        # self.assertEqual(class_test.HotfixClass.InnerClass, class_test.HotfixClass.InnerClass1)
+
+        no_hotfix_class_obj = class_test.NoHotfixClass()
+        self.assertEqual(no_hotfix_class_obj.no_hotfix_data, 1)
+        self.assertEqual(no_hotfix_class_obj.no_hotfix_method(), 1)
+
+        another_no_hotfix_class_obj = class_test.AnotherNoHotfixClass()
+        self.assertEqual(another_no_hotfix_class_obj.no_hotfix_data, 1)
+        self.assertEqual(another_no_hotfix_class_obj.no_hotfix_method(), 1)
 
         shutil.copy(self.module_file_v2, self.module_file)
         hotfix(["class_test"])
@@ -69,3 +84,19 @@ class HotfixClassTestCase(unittest.TestCase):
 
         self.assertEqual(hotfix_class_obj.no_hotfix_property, 1)
         self.assertEqual(hotfix_class_obj.hotfix_property, 2)
+
+        self.assertEqual(hotfix_class_obj.replace_data_with_func(), 2)
+        self.assertEqual(hotfix_class_obj.replace_data_with_static_method(), 2)
+        self.assertEqual(hotfix_class_obj.replace_data_with_class_method(), 2)
+
+        self.assertEqual(class_test.HotfixClass.InnerClass1.func(), 2)
+        self.assertEqual(class_test.HotfixClass.InnerClass2.func(), 2)
+        # self.assertEqual(class_test.HotfixClass.InnerClass, class_test.HotfixClass.InnerClass2)
+
+        no_hotfix_class_obj = class_test.NoHotfixClass()
+        self.assertEqual(no_hotfix_class_obj.no_hotfix_data, 1)
+        self.assertEqual(no_hotfix_class_obj.no_hotfix_method(), 1)
+
+        another_no_hotfix_class_obj = class_test.AnotherNoHotfixClass()
+        self.assertEqual(another_no_hotfix_class_obj.no_hotfix_data, 1)
+        self.assertEqual(another_no_hotfix_class_obj.no_hotfix_method(), 1)
