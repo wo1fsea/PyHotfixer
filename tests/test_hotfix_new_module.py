@@ -17,6 +17,6 @@ from pyhotfixer import hotfix
 
 class HotfixNewModuleTestCase(unittest.TestCase):
 
-    def test_hotfix_module(self):
+    def test_hotfix_new_module(self):
         hotfix(["new_module_test"])
         self.assertEqual(sys.modules["new_module_test"].data, 1)

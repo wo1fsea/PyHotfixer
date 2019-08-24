@@ -64,9 +64,33 @@ class HotfixClass(object):
     def not_hotfix_property(self):
         pass
 
+    replace_data_with_func = 1
+    replace_data_with_static_method = 1
+    replace_data_with_class_method = 1
+
+    class InnerClass1(object):
+        @staticmethod
+        def func():
+            return 1
+
+    class InnerClass2(object):
+        @staticmethod
+        def func():
+            return 1
+
+    InnerClass = InnerClass1
+
 
 @skip_hotfix
 class NoHotfixClass(object):
+    no_hotfix_data = 1
+
+    def no_hotfix_method(self):
+        return 1
+
+
+class AnotherNoHotfixClass(object):
+    __skip_hotfix__ = True
     no_hotfix_data = 1
 
     def no_hotfix_method(self):
