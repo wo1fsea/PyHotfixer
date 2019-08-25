@@ -17,8 +17,8 @@ import shutil
 from pyhotfixer import hotfix
 
 FILE_NAME = "module_test.py"
-FILE_NAME_V1 = "module_test.v1.py"
-FILE_NAME_V2 = "module_test.v2.py"
+FILE_NAME_V1 = "module_test_v1.py"
+FILE_NAME_V2 = "module_test_v2.py"
 
 
 class HotfixModuleTestCase(unittest.TestCase):
@@ -55,6 +55,10 @@ class HotfixModuleTestCase(unittest.TestCase):
 
         obj_id = id(module_test.OBJECT_CREATED_WHEN_HOTFIXING)
 
+        self.assertEqual(module_test.HotfixClass.func(), 1)
+        # print(id(module_test.HOTFIX_CLASS_REF), id(module_test.HotfixClass))
+        self.assertEqual(id(module_test.HOTFIX_CLASS_REF), id(module_test.HotfixClass))
+
         shutil.copy(self.module_file_v2, self.module_file)
         hotfix(["module_test"])
 
@@ -70,7 +74,14 @@ class HotfixModuleTestCase(unittest.TestCase):
         self.assertFalse(hasattr(module_test, "NEW_DATA"))
         self.assertEqual(module_test.NEW_HOTFIX_DATA, 2)
 
+        self.assertEqual(module_test.OBJECT_CREATED_WHEN_HOTFIXING.func(), 2)
         self.assertEqual(obj_id, id(module_test.OBJECT_CREATED_WHEN_HOTFIXING))
+
+        self.assertEqual(module_test.HotfixClass.func(), 2)
+        self.assertEqual(module_test.HOTFIX_CLASS_REF, module_test.HotfixClass)
+
+        self.assertEqual(module_test.NewClass.func(), 2)
+        self.assertEqual(module_test.NEW_CLASS_REF, module_test.NewClass)
 
     def test_hotfix_module_exception(self):
         shutil.copy(self.module_file_v1, self.module_file)
@@ -93,6 +104,9 @@ class HotfixModuleTestCase(unittest.TestCase):
         self.assertEqual(module_test.OBJECT_CREATED_WHEN_HOTFIXING.func(), 1)
         obj_id = id(module_test.OBJECT_CREATED_WHEN_HOTFIXING)
 
+        self.assertEqual(module_test.HotfixClass.func(), 1)
+        self.assertEqual(id(module_test.HOTFIX_CLASS_REF), id(module_test.HotfixClass))
+
         shutil.copy(self.module_file_v2, self.module_file)
         hotfix(["module_exception_test", "module_test"])
 
@@ -110,3 +124,13 @@ class HotfixModuleTestCase(unittest.TestCase):
 
         self.assertEqual(module_test.OBJECT_CREATED_WHEN_HOTFIXING.func(), 2)
         self.assertEqual(obj_id, id(module_test.OBJECT_CREATED_WHEN_HOTFIXING))
+
+        self.assertEqual(module_test.HotfixClass.func(), 2)
+        self.assertEqual(module_test.HOTFIX_CLASS_REF, module_test.HotfixClass)
+
+        self.assertEqual(module_test.NewClass.func(), 2)
+        self.assertEqual(module_test.NEW_CLASS_REF, module_test.NewClass)
+
+
+if __name__ == '__main__':
+    unittest.main()

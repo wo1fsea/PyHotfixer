@@ -11,14 +11,15 @@ Description:
 
 __skip_hotfix__ = True
 
+import re
 import gc
 import sys
 import inspect
 import importlib
 import traceback
+from weakref import WeakSet
 from importlib.abc import SourceLoader
 from importlib.machinery import FileFinder
-from weakref import WeakSet
 
 Py_TPFLAGS_HEAPTYPE = 0x200
 OLD_MODULES = {}
@@ -118,14 +119,12 @@ def hotfix_module(old_module, new_module):
                 delattr(new_module, name)
             continue
 
-        if name in hotfix_data_list:
-            continue
-
         if not hasattr(old_module, name):
             if isinstance(new_attr, type) and new_attr is not type or inspect.isfunction(new_attr):
                 continue
             else:
-                delattr(new_module, name)
+                if name not in hotfix_data_list:
+                    delattr(new_module, name)
                 continue
 
         old_attr = getattr(old_module, name, None)
@@ -133,10 +132,14 @@ def hotfix_module(old_module, new_module):
         if isinstance(new_attr, type) and new_attr is not type:
             if isinstance(old_attr, type) and old_attr is not type:
                 setattr(new_module, name, hotfix_class(old_attr, new_attr))
+            else:
+                old_type = try_find_old_class(new_attr)
+                if old_type:
+                    setattr(new_module, name, old_type)
         elif inspect.isfunction(new_attr):
             if inspect.isfunction(old_attr):
                 setattr(new_module, name, hotfix_function(old_attr, new_attr))
-        else:
+        elif name not in hotfix_data_list:
             setattr(new_module, name, old_attr)
 
     return new_module
@@ -163,23 +166,45 @@ def hotfix_function(old_function, new_function):
     return old_function
 
 
+def try_find_old_class(new_class):
+    if not (getattr(new_class, "__flags__", 0) & Py_TPFLAGS_HEAPTYPE):
+        return None
+
+    module_name = new_class.__module__
+
+    module = OLD_MODULES.get(module_name)
+    if not module:
+        return None
+
+    try:
+        # try to use class repr to get class path
+        class_repr_str = repr(new_class)
+        match = re.fullmatch("<class '([^']+)'>", class_repr_str)
+        class_name_path = match.groups()[0]
+        class_name_path = class_name_path.split(".")
+
+        cur = module
+        for p in class_name_path[1:]:
+            cur = getattr(cur, p, None)
+            if not cur:
+                break
+        if cur:
+            return cur
+
+    except Exception as ex:
+        traceback.print_exc()
+
+    return None
+
+
 def hotfix_obj(obj):
     new_class = getattr(obj, "__class__", None)
 
     if not new_class:
         return obj
 
-    if not (getattr(new_class, "__flags__", 0) & Py_TPFLAGS_HEAPTYPE):
-        return obj
+    old_class = try_find_old_class(new_class)
 
-    module_name = new_class.__module__
-
-    module = OLD_MODULES.get(module_name)
-    if not module:
-        return obj
-
-    class_name = new_class.__name__
-    old_class = getattr(module, class_name)
     if old_class:
         obj.__class__ = old_class
 
@@ -204,10 +229,6 @@ def hotfix_class(old_class, new_class):
         if name in hotfix_skip_list:
             continue
 
-        if name in hotfix_data_list:
-            setattr(old_class, name, new_attr)
-            continue
-
         if name not in old_class.__dict__:
             if (
                     isinstance(new_attr, property) or
@@ -217,7 +238,8 @@ def hotfix_class(old_class, new_class):
                     inspect.isclass(new_attr) or
                     inspect.isclass(old_attr) or
                     inspect.ismemberdescriptor(new_attr) or
-                    inspect.isgetsetdescriptor(new_attr)
+                    inspect.isgetsetdescriptor(new_attr) or
+                    name in hotfix_data_list
             ):
                 setattr(old_class, name, new_attr)
             continue
@@ -226,7 +248,6 @@ def hotfix_class(old_class, new_class):
 
         if isinstance(new_attr, property):
             setattr(old_class, name, new_attr)
-
         elif isinstance(new_attr, staticmethod) or isinstance(new_attr, classmethod):
             if (
                     hasattr(old_attr, "__func__") and hasattr(new_attr, "__func__") and
@@ -235,21 +256,22 @@ def hotfix_class(old_class, new_class):
                 pass
             else:
                 setattr(old_class, name, new_attr)
-
         elif inspect.isfunction(new_attr):
             if inspect.isfunction(old_attr):
                 setattr(old_class, name, hotfix_function(old_attr, new_attr))
             else:
                 setattr(old_class, name, new_attr)
-
         elif inspect.isclass(new_attr):
             if inspect.isclass(old_attr) and new_attr.__name__ == old_attr.__name__:
                 setattr(old_class, name, hotfix_class(old_attr, new_attr))
             else:
-                setattr(old_class, name, new_attr)
+                old_type = try_find_old_class(new_attr)
+                setattr(old_class, name, old_type if old_type else new_attr)
         elif inspect.ismemberdescriptor(new_attr):
             setattr(old_class, name, new_attr)
         elif inspect.isgetsetdescriptor(new_attr):
+            setattr(old_class, name, new_attr)
+        elif name in hotfix_data_list:
             setattr(old_class, name, new_attr)
 
     return old_class
