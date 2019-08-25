@@ -4,7 +4,9 @@ __skip_hotfix__ = False
 __hotfix_data_list__ = [
     "HOTFIX_DATA",
     "NEW_HOTFIX_DATA",
-    "OBJECT_CREATE_WHEN_HOTFIXING"
+    "OBJECT_CREATE_WHEN_HOTFIXING",
+    "HOTFIX_CLASS_REF",
+    "NEW_CLASS_REF"
 ]
 
 HOTFIX_DATA = 2
@@ -39,3 +41,21 @@ class ObjCreatedWhenHotfixing(object):
 
 
 OBJECT_CREATED_WHEN_HOTFIXING = ObjCreatedWhenHotfixing()
+
+
+class HotfixClass(object):
+    @staticmethod
+    def func():
+        return 2
+
+
+HOTFIX_CLASS_REF = HotfixClass
+
+
+class NewClass(object):
+    @staticmethod
+    def func():
+        return 2
+
+
+NEW_CLASS_REF = NewClass

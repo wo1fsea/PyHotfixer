@@ -60,7 +60,7 @@ class HotfixClassTestCase(unittest.TestCase):
 
         self.assertEqual(class_test.HotfixClass.InnerClass1.func(), 1)
         self.assertEqual(class_test.HotfixClass.InnerClass2.func(), 1)
-        # self.assertEqual(class_test.HotfixClass.InnerClass, class_test.HotfixClass.InnerClass1)
+        self.assertEqual(class_test.HotfixClass.InnerClass, class_test.HotfixClass.InnerClass1)
 
         no_hotfix_class_obj = class_test.NoHotfixClass()
         self.assertEqual(no_hotfix_class_obj.no_hotfix_data, 1)
@@ -91,7 +91,7 @@ class HotfixClassTestCase(unittest.TestCase):
 
         self.assertEqual(class_test.HotfixClass.InnerClass1.func(), 2)
         self.assertEqual(class_test.HotfixClass.InnerClass2.func(), 2)
-        # self.assertEqual(class_test.HotfixClass.InnerClass, class_test.HotfixClass.InnerClass2)
+        self.assertEqual(class_test.HotfixClass.InnerClass, class_test.HotfixClass.InnerClass2)
 
         no_hotfix_class_obj = class_test.NoHotfixClass()
         self.assertEqual(no_hotfix_class_obj.no_hotfix_data, 1)
